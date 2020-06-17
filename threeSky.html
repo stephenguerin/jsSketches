@@ -1,0 +1,73 @@
+<html>
+    <script src="https://cdn.jsdelivr.net/gh/lizard-isana/orb.js@2.3/build/orb.v2.js"></script>
+
+<body>
+<script type=module>
+    import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
+    console.log(THREE)
+
+    setTimeout(main, 1);
+    async function main(){
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        document.body.appendChild( renderer.domElement );
+        const stars = await loadStars()
+        console.log('stars', stars)
+        addStars(scene, stars)
+        renderer.render( scene, camera );
+    }
+
+    async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
+        var your_location = {
+            "latitude":lat,
+            "longitude":lon,
+            "altitude":0
+        }
+        let tmp = []
+        for(let i=0; i<stars.declination.length; i++){
+            var star = {
+                "ra":stars.rightAscension[i],
+                "dec":stars.declination[i],
+                "distance":5433000
+            }
+            var observe_star = new Orb.Observation({
+                "observer":your_location ,
+                "target":star
+            });
+            var horizontal = observe_star.azel(date); 
+            const az = horizontal.azimuth * (Math.PI/180)
+            const elv = horizontal.elevation * (Math.PI/180)
+            const geometry = new THREE.BoxGeometry();
+            const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+            const cube = new THREE.Mesh( geometry, material );
+            const celR = 10
+            const y = Math.sin(elv) * celR 
+            const x = -Math.sin(az) * celR 
+            const z = Math.cos(az) * celR
+            scene.add( cube );
+
+            cube.position.x = x
+            cube.position.y = y
+            cube.position.z = z
+
+            console.log(cube)
+            tmp.push(elv)
+        }
+        // console.log(tmp)
+
+    }
+
+    async function loadStars() {
+        const resp = await fetch('./starData.json')
+        const json = await resp.json()
+        //console.log(json)
+        return json
+    }
+</script>
+
+</body>
+
+</html>
