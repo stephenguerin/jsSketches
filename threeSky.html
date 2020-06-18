@@ -1,6 +1,6 @@
 <html>
     <script src="https://cdn.jsdelivr.net/gh/lizard-isana/orb.js@2.3/build/orb.v2.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
 <body>
 <script type=module>
     import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
@@ -9,7 +9,7 @@
     setTimeout(main, 1);
     async function main(){
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera( 140, window.innerWidth / window.innerHeight, 0.1, 10000 );
+        var camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 100000 );
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( window.innerWidth, window.innerHeight );
@@ -17,14 +17,13 @@
         const stars = await loadStars()
         console.log('stars', stars)
         await addStars(scene, stars)
-
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-        const cube = new THREE.Mesh( geometry, material );
-        cube.position.z = -25
-        scene.add(cube)
+   
         console.log('fluffy')
         renderer.render( scene, camera );
+        setInterval(async () => {
+            await addStars(scene, stars)
+            renderer.render( scene, camera );
+        }, 300);
     }
 
     async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
@@ -35,24 +34,25 @@
         }
 
         for(let i=0; i<stars.declination.length; i++){
-            const ra = stars.rightAscension[i]
-            const dec = stars.declination[i]
-            var star = {
+            const ra = stars.rightAscension[i] * (180/Math.PI)
+            const dec = stars.declination[i] * (180/Math.PI)
+            const star = {
                 "ra":ra,
                 "dec":dec,
                 "distance":54330
             }
-            var observe_star = new Orb.Observation({
+            const observe_star = new Orb.Observation({
                 "observer":your_location ,
                 "target":star
             });
-            var horizontal = observe_star.azel(date); 
-            const azimuth = horizontal.azimuth //* (Math.PI/180)
-            const elev = horizontal.elevation //* (Math.PI/180)
-            const geometry = new THREE.BoxGeometry();
-            const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+            const horizontal = observe_star.azel(date); 
+            const mag = 2**stars.apparentMagnitude[i]
+            const azimuth = horizontal.azimuth * (Math.PI/180)
+            const elev = horizontal.elevation * (Math.PI/180)
+            const geometry = new THREE.BoxGeometry(mag,mag,mag);
+            const material = new THREE.MeshBasicMaterial( { color: 0x99ff99 } );
             const cube = new THREE.Mesh( geometry, material );
-            const celR = 900
+            const celR = 10000
             const y = Math.sin(elev) * celR 
             const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
             const z = Math.cos(azimuth) * Math.cos(elev) *  celR
@@ -62,7 +62,7 @@
             cube.position.y = y
             cube.position.z = z
 
-            console.log({ra,dec,x,y,z})
+            //  console.log({ra,dec, azimuth, elev,x,y,z})
         }
 
     }
