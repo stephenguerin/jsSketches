@@ -16,7 +16,7 @@
         document.body.appendChild( renderer.domElement );
         const stars = await loadStars()
         console.log('stars', stars)
-        addStars(scene, stars)
+        await addStars(scene, stars)
         renderer.render( scene, camera );
     }
 
@@ -26,7 +26,7 @@
             "longitude":lon,
             "altitude":0
         }
-        let tmp = []
+
         for(let i=0; i<stars.declination.length; i++){
             var star = {
                 "ra":stars.rightAscension[i],
@@ -38,15 +38,15 @@
                 "target":star
             });
             var horizontal = observe_star.azel(date); 
-            const az = horizontal.azimuth * (Math.PI/180)
-            const elv = horizontal.elevation * (Math.PI/180)
+            const azimuth = horizontal.azimuth * (Math.PI/180)
+            const elev = horizontal.elevation * (Math.PI/180)
             const geometry = new THREE.BoxGeometry();
             const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
             const cube = new THREE.Mesh( geometry, material );
-            const celR = 10
-            const y = Math.sin(elv) * celR 
-            const x = -Math.sin(az) * celR 
-            const z = Math.cos(az) * celR
+            const celR = 1000
+            const y = Math.sin(elev) * celR 
+            const x = -Math.sin(azimuth) * celR 
+            const z = Math.cos(azimuth) * celR
             scene.add( cube );
 
             cube.position.x = x
@@ -54,9 +54,7 @@
             cube.position.z = z
 
             console.log(cube)
-            tmp.push(elv)
         }
-        // console.log(tmp)
 
     }
 
