@@ -45,8 +45,8 @@
             const cube = new THREE.Mesh( geometry, material );
             const celR = 1000
             const y = Math.sin(elev) * celR 
-            const x = -Math.sin(azimuth) * celR 
-            const z = Math.cos(azimuth) * celR
+            const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
+            const z = Math.cos(azimuth) * Math.cos(elev) *  celR
             scene.add( cube );
 
             cube.position.x = x
