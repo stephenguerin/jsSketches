@@ -9,7 +9,7 @@
     setTimeout(main, 1);
     async function main(){
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 100000 );
+        var camera = new THREE.PerspectiveCamera( 120, window.innerWidth / window.innerHeight, 0.1, 300000 );
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( window.innerWidth, window.innerHeight );
@@ -20,10 +20,10 @@
    
         console.log('fluffy')
         renderer.render( scene, camera );
-        setInterval(async () => {
-            await addStars(scene, stars)
-            renderer.render( scene, camera );
-        }, 300);
+        // setInterval(async () => {
+        //     await addStars(scene, stars)
+        //     renderer.render( scene, camera );
+        // }, 300);
     }
 
     async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
@@ -46,13 +46,13 @@
                 "target":star
             });
             const horizontal = observe_star.azel(date); 
-            const mag = 2**stars.apparentMagnitude[i]
+            const mag = 3000**(stars.apparentMagnitude[i]/8)
             const azimuth = horizontal.azimuth * (Math.PI/180)
             const elev = horizontal.elevation * (Math.PI/180)
             const geometry = new THREE.BoxGeometry(mag,mag,mag);
             const material = new THREE.MeshBasicMaterial( { color: 0x99ff99 } );
             const cube = new THREE.Mesh( geometry, material );
-            const celR = 10000
+            const celR = 110000
             const y = Math.sin(elev) * celR 
             const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
             const z = Math.cos(azimuth) * Math.cos(elev) *  celR
