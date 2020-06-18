@@ -9,7 +9,7 @@
     setTimeout(main, 1);
     async function main(){
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        var camera = new THREE.PerspectiveCamera( 140, window.innerWidth / window.innerHeight, 0.1, 10000 );
 
         var renderer = new THREE.WebGLRenderer();
         renderer.setSize( window.innerWidth, window.innerHeight );
@@ -17,6 +17,13 @@
         const stars = await loadStars()
         console.log('stars', stars)
         await addStars(scene, stars)
+
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+        const cube = new THREE.Mesh( geometry, material );
+        cube.position.z = -25
+        scene.add(cube)
+        console.log('fluffy')
         renderer.render( scene, camera );
     }
 
@@ -28,22 +35,24 @@
         }
 
         for(let i=0; i<stars.declination.length; i++){
+            const ra = stars.rightAscension[i]
+            const dec = stars.declination[i]
             var star = {
-                "ra":stars.rightAscension[i],
-                "dec":stars.declination[i],
-                "distance":5433000
+                "ra":ra,
+                "dec":dec,
+                "distance":54330
             }
             var observe_star = new Orb.Observation({
                 "observer":your_location ,
                 "target":star
             });
             var horizontal = observe_star.azel(date); 
-            const azimuth = horizontal.azimuth * (Math.PI/180)
-            const elev = horizontal.elevation * (Math.PI/180)
+            const azimuth = horizontal.azimuth //* (Math.PI/180)
+            const elev = horizontal.elevation //* (Math.PI/180)
             const geometry = new THREE.BoxGeometry();
             const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
             const cube = new THREE.Mesh( geometry, material );
-            const celR = 1000
+            const celR = 900
             const y = Math.sin(elev) * celR 
             const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
             const z = Math.cos(azimuth) * Math.cos(elev) *  celR
@@ -53,7 +62,7 @@
             cube.position.y = y
             cube.position.z = z
 
-            console.log(cube)
+            console.log({ra,dec,x,y,z})
         }
 
     }
