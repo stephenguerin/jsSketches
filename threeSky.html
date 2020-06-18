@@ -55,7 +55,7 @@
             const celR = 110000
             const y = Math.sin(elev) * celR 
             const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
-            const z = Math.cos(azimuth) * Math.cos(elev) *  celR
+            const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
             scene.add( cube );
 
             cube.position.x = x
