@@ -4,6 +4,8 @@
 <body>
 <script type=module>
     import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
+    window.THREE = THREE
+    window.module ={}
     console.log(THREE)
 
     setTimeout(main, 1);
@@ -20,11 +22,16 @@
    
         console.log('fluffy')
         renderer.render( scene, camera );
-        // setInterval(async () => {
-        //     await addStars(scene, stars)
-        //     renderer.render( scene, camera );
-        // }, 300);
+        const controls = await addTrackBall(camera, renderer.domElement, renderer, scene)
+        //render(controls,scene,camera,renderer)
     }
+
+    // function render(controls, scene, camera,renderer) {
+    //     controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+    //     renderer.render( scene, camera );
+    //     requestAnimationFrame(render.bind(this,controls,scene, camera,renderer))
+    //     console.log('.')
+    // }
 
     async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
         var your_location = {
@@ -46,21 +53,31 @@
                 "target":star
             });
             const horizontal = observe_star.azel(date); 
-            const mag = 3000**(stars.apparentMagnitude[i]/8)
+            const mag = (8-stars.apparentMagnitude[i])*100
+        
             const azimuth = horizontal.azimuth * (Math.PI/180)
             const elev = horizontal.elevation * (Math.PI/180)
-            const geometry = new THREE.BoxGeometry(mag,mag,mag);
-            const material = new THREE.MeshBasicMaterial( { color: 0x99ff99 } );
-            const cube = new THREE.Mesh( geometry, material );
             const celR = 110000
             const y = Math.sin(elev) * celR 
             const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
             const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
-            scene.add( cube );
-
-            cube.position.x = x
-            cube.position.y = y
-            cube.position.z = z
+            let colorIndex = Math.floor(((stars.colorIndexBV[i] + 0.27)/3.9)*stars.color.length)
+            colorIndex = Math.min(stars.color.length-1, colorIndex)
+            const colour = stars.color[colorIndex]
+            if(stars.apparentMagnitude[i] < -1.4){
+                console.log({x,y,z,mag})
+            }
+            // add geometry
+            if (mag>2){
+                const geometry = new THREE.BoxGeometry(mag,mag,mag);
+                const color = `rgb(${Math.floor(255*colour[0])},${Math.floor(255*colour[1])},${Math.floor(255*colour[2])})`
+                const material = new THREE.MeshBasicMaterial( { color:color} );
+                const cube = new THREE.Mesh( geometry, material );
+                scene.add( cube );
+                cube.position.x = x
+                cube.position.y = y
+                cube.position.z = z
+            }
 
             //  console.log({ra,dec, azimuth, elev,x,y,z})
         }
@@ -72,6 +89,26 @@
         const json = await resp.json()
         //console.log(json)
         return json
+    }
+
+    async function addTrackBall(camera, domElement, renderer,scene){
+        try{
+            var tb = await import('https://threejs.org/examples/jsm/controls/OrbitControls.js')
+            var controls = new tb.OrbitControls( camera, renderer.domElement );
+
+                controls.keys = [ 65, 83, 68 ];
+                controls.addEventListener('end',(a,b)=>{
+                    console.log('e',a,b)
+                    controls.update();
+                    renderer.render( scene, camera );
+
+                })
+                controls.enabled=true
+                return controls
+            console.log('trackball', controls)
+        } catch(err){
+            console.error(err)
+        }
     }
 </script>
 
