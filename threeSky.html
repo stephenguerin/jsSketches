@@ -11,7 +11,7 @@
     setTimeout(main, 1);
     async function main(){
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 300000 );
+        var camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 300000 );
         window.camera = camera
         var renderer = new THREE.WebGLRenderer();
         window.renderer=renderer
@@ -21,9 +21,15 @@
         const stars = await loadStars()
         console.log('stars', stars)
         await addStars(scene, stars)
-   
+        makeRings(scene)
         console.log('fluffy')
         renderer.render( scene, camera );
+        //
+        const [x,y,z] = raDec2XYZ(180, 89)
+        const vector = new THREE.Vector3( x,y,z)
+        camera.lookAt(vector)
+        renderer.render( scene, camera );
+
         //const controls = await addTrackBall(camera, renderer.domElement, renderer, scene)
         //render(controls,scene,camera,renderer)
     }
@@ -35,6 +41,36 @@
     //     console.log('.')
     // }
 
+    function raDec2XYZ(ra,dec, lon=-106, lat=35,date=new Date(), distance=110000){
+        var your_location = {
+            "latitude":lat,
+            "longitude":lon,
+            "altitude":0
+        }
+
+        const star = {
+            "ra":24*ra/360,
+            "dec":dec,
+            "distance":54330
+        }
+        const observe_star = new Orb.Observation({
+            "observer":your_location ,
+            "target":star
+        });
+        const horizontal = observe_star.azel(date); 
+    
+        const azimuth = horizontal.azimuth * (Math.PI/180)
+        const elev = horizontal.elevation * (Math.PI/180)
+        const celR = distance
+        const y = -Math.sin(elev) * celR 
+        const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
+        const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
+
+        return [x,y,z]
+    }
+
+    window.raDec2XYZ = raDec2XYZ
+
     async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
         var your_location = {
             "latitude":lat,
@@ -45,30 +81,13 @@
         for(let i=0; i<stars.declination.length; i++){
             const ra = stars.rightAscension[i] * (180/Math.PI)
             const dec = stars.declination[i] * (180/Math.PI)
-            const star = {
-                "ra":ra,
-                "dec":dec,
-                "distance":54330
-            }
-            const observe_star = new Orb.Observation({
-                "observer":your_location ,
-                "target":star
-            });
-            const horizontal = observe_star.azel(date); 
-            const mag = (8-stars.apparentMagnitude[i])*100
-        
-            const azimuth = horizontal.azimuth * (Math.PI/180)
-            const elev = horizontal.elevation * (Math.PI/180)
-            const celR = 110000
-            const y = Math.sin(elev) * celR 
-            const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
-            const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
+            const mag = ((8-stars.apparentMagnitude[i])**2)*40
+
+            let [x,y,z] = raDec2XYZ(ra, dec, lon, lat, date)
             let colorIndex = Math.floor(((stars.colorIndexBV[i] + 0.27)/3.9)*stars.color.length)
             colorIndex = Math.min(stars.color.length-1, colorIndex)
             const colour = stars.color[colorIndex]
-            if(mag >800){
-                console.log({x,y,z,mag})
-            }
+           
             // add geometry
             // if (mag>2){
                 const geometry = new THREE.BoxGeometry(mag,mag,mag);
@@ -112,6 +131,40 @@
             console.error(err)
         }
     }
+
+    function makeRings(scene) {
+        var material = new THREE.LineBasicMaterial( { color: 0x0000aa } );
+        for (var dec=-90;dec<=85;dec += 15) {
+            let points = []
+            let [x1,y1,z1] = raDec2XYZ(0, dec)
+            points.push(new THREE.Vector3( x1,y1,z1 ) )
+            for (var ra = 1; ra<=360;ra += 1 ) {
+                let [x2,y2,z2] = raDec2XYZ(ra, dec)
+                points.push(new THREE.Vector3( x2,y2,z2 ) )
+            }
+            var geometry = new THREE.BufferGeometry().setFromPoints( points );
+            var line = new THREE.Line( geometry, material );
+            scene.add( line );
+        }
+        var material = new THREE.LineBasicMaterial( { color: 0x0000aa } );
+        for (var ra = 0; ra<360; ra += 15) {
+            let points = []
+            let [x1,y1,z1] = raDec2XYZ(ra, -75)
+            points.push(new THREE.Vector3( x1,y1,z1 ) )
+            for (var dec=-90;dec<=90;dec += 1 ) {
+                if (ra%90 == 0 || Math.abs(dec)<=75){
+                    let [x2,y2,z2] = raDec2XYZ(ra, dec)
+                    points.push(new THREE.Vector3( x2,y2,z2 ) )
+                }
+            }
+            var geometry = new THREE.BufferGeometry().setFromPoints( points );
+            var line = new THREE.Line( geometry, material );
+            scene.add( line );
+        }
+    }
+
+
+
 </script>
 
 </body>
