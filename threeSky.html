@@ -30,17 +30,20 @@
         camera.lookAt(vector)
         renderer.render( scene, camera );
 
-        //const controls = await addTrackBall(camera, renderer.domElement, renderer, scene)
-        //render(controls,scene,camera,renderer)
+
     }
 
-    // function render(controls, scene, camera,renderer) {
-    //     controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
-    //     renderer.render( scene, camera );
-    //     requestAnimationFrame(render.bind(this,controls,scene, camera,renderer))
-    //     console.log('.')
-    // }
-
+    /**
+     * Place planets on celestial sphere.
+     *   Just to confuse things a bit more this takes ra in degrees
+     * 
+     * @param {degrees} ra
+     * @param {degrees} dec
+     * @param {degrees} lon
+     * @param {degrees} lat
+     * @param {Date} date
+     * @param {Number} distanceto place celestial sphere
+     * */
     function raDec2XYZ(ra,dec, lon=-106, lat=35,date=new Date(), distance=110000){
         var your_location = {
             "latitude":lat,
@@ -62,8 +65,8 @@
         const azimuth = horizontal.azimuth * (Math.PI/180)
         const elev = horizontal.elevation * (Math.PI/180)
         const celR = distance
-        const y = -Math.sin(elev) * celR 
-        const x = -Math.sin(azimuth) * Math.cos(elev) * celR 
+        const y = Math.sin(elev) * celR 
+        const x = Math.sin(azimuth) * Math.cos(elev) * celR 
         const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
 
         return [x,y,z]
@@ -112,28 +115,28 @@
         return json
     }
 
-    async function addTrackBall(camera, domElement, renderer,scene){
-        try{
-            var tb = await import('https://threejs.org/examples/jsm/controls/OrbitControls.js')
-            var controls = new tb.OrbitControls( camera, renderer.domElement );
+    // async function addTrackBall(camera, domElement, renderer,scene){
+    //     try{
+    //         var tb = await import('https://threejs.org/examples/jsm/controls/OrbitControls.js')
+    //         var controls = new tb.OrbitControls( camera, renderer.domElement );
 
-                controls.keys = [ 65, 83, 68 ];
-                controls.addEventListener('end',(a,b)=>{
-                    console.log('e',a,b)
-                    controls.update();
-                    renderer.render( scene, camera );
+    //             controls.keys = [ 65, 83, 68 ];
+    //             controls.addEventListener('end',(a,b)=>{
+    //                 console.log('e',a,b)
+    //                 controls.update();
+    //                 renderer.render( scene, camera );
 
-                })
-                controls.enabled=true
-                return controls
-            console.log('trackball', controls)
-        } catch(err){
-            console.error(err)
-        }
-    }
+    //             })
+    //             controls.enabled=true
+    //             return controls
+    //         console.log('trackball', controls)
+    //     } catch(err){
+    //         console.error(err)
+    //     }
+    // }
 
     function makeRings(scene) {
-        var material = new THREE.LineBasicMaterial( { color: 0x0000aa } );
+        var material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
         for (var dec=-90;dec<=85;dec += 15) {
             let points = []
             let [x1,y1,z1] = raDec2XYZ(0, dec)
@@ -146,7 +149,7 @@
             var line = new THREE.Line( geometry, material );
             scene.add( line );
         }
-        var material = new THREE.LineBasicMaterial( { color: 0x0000aa } );
+        var material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
         for (var ra = 0; ra<360; ra += 15) {
             let points = []
             let [x1,y1,z1] = raDec2XYZ(ra, -75)
