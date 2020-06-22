@@ -11,7 +11,7 @@
     setTimeout(main, 1);
     async function main(){
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera( 90, window.innerWidth / window.innerHeight, 0.1, 300000 );
+        var camera = new THREE.PerspectiveCamera( 95, window.innerWidth / window.innerHeight, 0.1, 300000 );
         window.camera = camera
         var renderer = new THREE.WebGLRenderer();
         window.renderer=renderer
@@ -20,13 +20,18 @@
         document.body.appendChild( renderer.domElement );
         const stars = await loadStars()
         console.log('stars', stars)
-        await addStars(scene, stars)
+        const LON = -106
+        const LAT = 35
+        const DATE = new Date()
+        await addStars(scene, stars, LON, LAT, DATE)
+        await addPlanets(scene, LON, LAT, DATE)
         makeRings(scene)
-        console.log('fluffy')
+        console.log('Done adding stars and planets')
         renderer.render( scene, camera );
         //
-        const [x,y,z] = raDec2XYZ(180, 89)
-        const vector = new THREE.Vector3( x,y,z)
+        let [x,y,z] = raDec2XYZ(0, 0)
+        // let [x,y,z] = raDec2XYZ(0, 89) // polaris
+        let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
         renderer.render( scene, camera );
 
@@ -54,17 +59,17 @@
         const star = {
             "ra":24*ra/360,
             "dec":dec,
-            "distance":54330
+            "distance":distance
         }
         const observe_star = new Orb.Observation({
             "observer":your_location ,
             "target":star
         });
         const horizontal = observe_star.azel(date); 
-    
+        // console.log(horizontal)
         const azimuth = horizontal.azimuth * (Math.PI/180)
         const elev = horizontal.elevation * (Math.PI/180)
-        const celR = distance
+        const celR = horizontal.distance
         const y = Math.sin(elev) * celR 
         const x = Math.sin(azimuth) * Math.cos(elev) * celR 
         const z = -Math.cos(azimuth) * Math.cos(elev) *  celR
@@ -91,21 +96,59 @@
             colorIndex = Math.min(stars.color.length-1, colorIndex)
             const colour = stars.color[colorIndex]
            
-            // add geometry
-            // if (mag>2){
-                const geometry = new THREE.BoxGeometry(mag,mag,mag);
-                const color = `rgb(${Math.floor(255*colour[0])},${Math.floor(255*colour[1])},${Math.floor(255*colour[2])})`
-                const material = new THREE.MeshBasicMaterial( { color:color} );
-                const cube = new THREE.Mesh( geometry, material );
-                scene.add( cube );
-                cube.position.x = x
-                cube.position.y = y
-                cube.position.z = z
-            // }
-
-            //  console.log({ra,dec, azimuth, elev,x,y,z})
+            const geometry = new THREE.BoxGeometry(mag,mag,mag);
+            const color = `rgb(${Math.floor(255*colour[0])},${Math.floor(255*colour[1])},${Math.floor(255*colour[2])})`
+            const material = new THREE.MeshBasicMaterial( { color:color} );
+            const cube = new THREE.Mesh( geometry, material );
+            scene.add( cube );
+            cube.position.x = x
+            cube.position.y = y
+            cube.position.z = z
+    
         }
+    }
 
+    async function addPlanets(scene, lon=-106, lat=35, date=new Date()){
+        console.log('planets',date)
+        const planets = ["Sun","Mercury","Venus","Earth","Moon","Mars","Jupiter","Saturn","Uranus","Neptune"]
+        // const planets = ["Sun", "Moon","Mercury","Venus","Earth"]
+        for (let planZ of planets){
+            let celestialSphereRadius = 100000
+            let dist = undefined
+            let color =  0x22ff00
+            let planetRadius = 500
+            try{
+                let planet = new Orb.VSOP(planZ);
+                if (planZ == 'Sun') {
+                    planet = new Orb.Sun()
+                    dist = 1
+                    planetRadius = 6000
+                    color = 0xffaa00
+                }
+                if (planZ == 'Moon'){
+                    planet = new Orb.Moon()
+                    dist = 0.0002
+                    planetRadius = 1
+                    color =  0x989898
+                }
+                const radec = planet.radec(date); // ecliptic rectangular coordinates(x, y, z)
+                const ra = radec.ra
+                const dec = radec.dec
+                dist = dist || radec.distance
+                let [x,y,z] = raDec2XYZ(ra, dec, lon, lat,date, dist)
+                const geometry = new THREE.SphereGeometry( planetRadius, 32, 32 );
+                const material = new THREE.MeshBasicMaterial( {color} );
+                const sphere = new THREE.Mesh( geometry, material );
+                sphere.position.x = x * celestialSphereRadius
+                sphere.position.y = y * celestialSphereRadius
+                sphere.position.z = z * celestialSphereRadius
+                scene.add( sphere );
+                console.log({planet,p:sphere.position, dist})
+            } catch(err){
+                console.error(planZ)
+                console.error(err)
+            }
+        }
     }
 
     async function loadStars() {
@@ -114,26 +157,6 @@
         //console.log(json)
         return json
     }
-
-    // async function addTrackBall(camera, domElement, renderer,scene){
-    //     try{
-    //         var tb = await import('https://threejs.org/examples/jsm/controls/OrbitControls.js')
-    //         var controls = new tb.OrbitControls( camera, renderer.domElement );
-
-    //             controls.keys = [ 65, 83, 68 ];
-    //             controls.addEventListener('end',(a,b)=>{
-    //                 console.log('e',a,b)
-    //                 controls.update();
-    //                 renderer.render( scene, camera );
-
-    //             })
-    //             controls.enabled=true
-    //             return controls
-    //         console.log('trackball', controls)
-    //     } catch(err){
-    //         console.error(err)
-    //     }
-    // }
 
     function makeRings(scene) {
         var material = new THREE.LineBasicMaterial( { color: 0xff0000 } );
