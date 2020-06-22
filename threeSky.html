@@ -22,14 +22,14 @@
         console.log('stars', stars)
         const LON = -106
         const LAT = 35
-        const DATE = new Date()
+        const DATE = new Date("2020-6-21 00:53")
         await addStars(scene, stars, LON, LAT, DATE)
         await addPlanets(scene, LON, LAT, DATE)
         makeRings(scene)
         console.log('Done adding stars and planets')
         renderer.render( scene, camera );
         //
-        let [x,y,z] = raDec2XYZ(0, 0)
+        let [x,y,z] = raDec2XYZ(350, 23)
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
@@ -110,29 +110,39 @@
 
     async function addPlanets(scene, lon=-106, lat=35, date=new Date()){
         console.log('planets',date)
-        const planets = ["Sun","Mercury","Venus","Earth","Moon","Mars","Jupiter","Saturn","Uranus","Neptune"]
+        const planets = [
+        {name:"Sun", color:0xffff44}
+        ,{name:"Mercury", color:0xffff00}
+        ,{name:"Venus", color:0x00ff55}
+        // ,{name:"Earth", color:0xff0000}
+        ,{name:"Moon", color:0x999999}
+        ,{name:"Mars", color:0xff0000}
+        ,{name:"Jupiter", color:0xff00ff}
+        ,{name:"Saturn", color:0x0044aa}
+        ,{name:"Uranus", color:0x5500ff}
+        ,{name:"Neptune", color:0x00ffff}
+        ]
         // const planets = ["Sun", "Moon","Mercury","Venus","Earth"]
         for (let planZ of planets){
             let celestialSphereRadius = 100000
             let dist = undefined
-            let color =  0x22ff00
+            let color =  planZ.color
+            let name = planZ.name
             let planetRadius = 500
             try{
-                let planet = new Orb.VSOP(planZ);
-                if (planZ == 'Sun') {
+                let planet = new Orb.VSOP(name);
+                if (name == 'Sun') {
                     planet = new Orb.Sun()
                     dist = 1
                     planetRadius = 6000
-                    color = 0xffaa00
                 }
-                if (planZ == 'Moon'){
+                if (name == 'Moon'){
                     planet = new Orb.Moon()
                     dist = 0.0002
-                    planetRadius = 1
-                    color =  0x989898
+                    planetRadius = 0.4
                 }
                 const radec = planet.radec(date); // ecliptic rectangular coordinates(x, y, z)
-                const ra = radec.ra
+                const ra = radec.ra * 360/24
                 const dec = radec.dec
                 dist = dist || radec.distance
                 let [x,y,z] = raDec2XYZ(ra, dec, lon, lat,date, dist)
@@ -143,7 +153,7 @@
                 sphere.position.y = y * celestialSphereRadius
                 sphere.position.z = z * celestialSphereRadius
                 scene.add( sphere );
-                console.log({planet,p:sphere.position, dist})
+                console.log({planet,p:sphere.position, dist, ra, dec})
             } catch(err){
                 console.error(planZ)
                 console.error(err)
