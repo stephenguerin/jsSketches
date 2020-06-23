@@ -20,8 +20,9 @@
         document.body.appendChild( renderer.domElement );
         const stars = await loadStars()
         console.log('stars', stars)
-        const LON = -106
-        const LAT = 35
+        // 36.25981 102.57058
+        const LON = 102.57058
+        const LAT = 35.25981
         const DATE = new Date("2020-6-21 00:53")
         await addStars(scene, stars, LON, LAT, DATE)
         await addPlanets(scene, LON, LAT, DATE)
@@ -29,7 +30,7 @@
         console.log('Done adding stars and planets')
         renderer.render( scene, camera );
         //
-        let [x,y,z] = raDec2XYZ(350, 23)
+        let [x,y,z] = raDec2XYZ(431, 23)
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
@@ -139,7 +140,7 @@
                 if (name == 'Moon'){
                     planet = new Orb.Moon()
                     dist = 0.0002
-                    planetRadius = 0.4
+                    planetRadius = 1
                 }
                 const radec = planet.radec(date); // ecliptic rectangular coordinates(x, y, z)
                 const ra = radec.ra * 360/24
@@ -160,6 +161,7 @@
             }
         }
     }
+    window.addPlanets = addPlanets
 
     async function loadStars() {
         const resp = await fetch('./starData.json')
