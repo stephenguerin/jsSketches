@@ -6,11 +6,13 @@
 
 chrome.runtime.onInstalled.addListener(function () {
   console.log("background on installed");
+
   var a = document.createElement("iframe");
   a.src = "https://dev.simtable.com/observer/alpha/map";
   a.width = 500;
   a.height = 500;
   document.body.appendChild(a);
+
   chrome.storage.sync.set({ color: "#3aa757" }, function () {
     console.log("The color is green.");
   });
