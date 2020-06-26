@@ -50,7 +50,7 @@
      * @param {Date} date
      * @param {Number} distanceto place celestial sphere
      * */
-    function raDec2XYZ(ra,dec, lon=-106, lat=35,date=new Date(), distance=110000){
+    function raDec2XYZ(ra,dec, lon=-106, lat=35,date=new Date(), distance=110000, offsetAlt=0, offsetAz=0){
         var your_location = {
             "latitude":lat,
             "longitude":lon,
@@ -68,8 +68,8 @@
         });
         const horizontal = observe_star.azel(date); 
         // console.log(horizontal)
-        const azimuth = horizontal.azimuth * (Math.PI/180)
-        const elev = horizontal.elevation * (Math.PI/180)
+        const azimuth = (horizontal.azimuth + offsetAz) * (Math.PI/180)
+        const elev = (horizontal.elevation + offsetAlt) * (Math.PI/180)
         const celR = horizontal.distance
         const y = Math.sin(elev) * celR 
         const x = Math.sin(azimuth) * Math.cos(elev) * celR 
@@ -80,7 +80,7 @@
 
     window.raDec2XYZ = raDec2XYZ
 
-    async function addStars( scene, stars, lon=-106, lat=35, date=new Date()){
+    async function addStars( scene, stars, lon=-106, lat=35, date=new Date(), offsetAlt=0, offsetAz=0){
         var your_location = {
             "latitude":lat,
             "longitude":lon,
@@ -92,7 +92,7 @@
             const dec = stars.declination[i] * (180/Math.PI)
             const mag = ((8-stars.apparentMagnitude[i])**2)*40
 
-            let [x,y,z] = raDec2XYZ(ra, dec, lon, lat, date)
+            let [x,y,z] = raDec2XYZ(ra, dec, lon, lat, date, offsetAlt, offsetAz)
             let colorIndex = Math.floor(((stars.colorIndexBV[i] + 0.27)/3.9)*stars.color.length)
             colorIndex = Math.min(stars.color.length-1, colorIndex)
             const colour = stars.color[colorIndex]
