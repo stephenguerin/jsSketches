@@ -5,9 +5,9 @@
 <script type=module>
     import * as THREE from 'https://threejs.org/build/three.module.js';
     // import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
-    import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
+    import { TrackballControls } from 'https://threejs.org/examples/jsm/controls/TrackballControls.js';
 
-    console.log(OrbitControls)
+    console.log(TrackballControls)
 
     window.THREE = THREE
     window.module ={}
@@ -42,10 +42,13 @@
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
+        camera.position.z=0.000000000000001
         renderer.render( scene, camera );
        
         let elapsed = 0
         const controls = createControls(camera, renderer.domElement)
+        controls.rotateSpeed = 1
+        // controls.autoRotate = true
         setInterval(async () => {
             elapsed += 1000 * 60 *60 * 24
             let date2 = new Date(DATE.getTime() + elapsed )
@@ -59,6 +62,8 @@
     function render(renderer, scene, camera, controls){
         requestAnimationFrame(()=>{
             controls.update()
+            controls.pan = false
+
             renderer.render( scene, camera )
             render(renderer, scene, camera, controls)
         })
@@ -66,10 +71,17 @@
 
 
     function createControls( camera ) {
-        const controls = new OrbitControls( camera, renderer.domElement );
+        const controls = new TrackballControls( camera, renderer.domElement );
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 1.2;
         controls.panSpeed = 0.8;
+        //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
+        controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+        controls.dampingFactor = 0.05;
+
+        controls.minDistance = 100;
+        controls.maxDistance = 500;
+
         controls.keys = [ 65, 83, 68 ];
         return controls
     }
