@@ -5,9 +5,9 @@
 <script type=module>
     import * as THREE from 'https://threejs.org/build/three.module.js';
     // import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
-    import { TrackballControls } from 'https://threejs.org/examples/jsm/controls/TrackballControls.js';
+    import { OrbitControls } from 'https://threejs.org/examples/jsm/controls/OrbitControls.js';
 
-    console.log(TrackballControls)
+    console.log(OrbitControls)
 
     window.THREE = THREE
     window.module ={}
@@ -66,7 +66,7 @@
 
 
     function createControls( camera ) {
-        const controls = new TrackballControls( camera, renderer.domElement );
+        const controls = new OrbitControls( camera, renderer.domElement );
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 1.2;
         controls.panSpeed = 0.8;
