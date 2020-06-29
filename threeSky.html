@@ -42,19 +42,17 @@
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
-        camera.position.z=0.000000000000001
+        camera.position.z=-Number.EPSILON //trackball controls need a little bit of offset to work
         renderer.render( scene, camera );
        
         let elapsed = 0
         const controls = createControls(camera, renderer.domElement)
-        controls.rotateSpeed = 1
-        // controls.autoRotate = true
         setInterval(async () => {
             elapsed += 1000 * 60 *60 * 24
             let date2 = new Date(DATE.getTime() + elapsed )
             starThreeObjects = await addStars(scene, starThreeObjects, stars, LON, LAT, date2)
             planetThreeObjects = await addPlanets(scene, planetThreeObjects, LON, LAT, date2)
-        }, 120);
+        }, 60);
         
         render(renderer, scene, camera, controls)
     }
@@ -72,17 +70,6 @@
 
     function createControls( camera ) {
         const controls = new TrackballControls( camera, renderer.domElement );
-        controls.rotateSpeed = 1.0;
-        controls.zoomSpeed = 1.2;
-        controls.panSpeed = 0.8;
-        //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
-        controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-        controls.dampingFactor = 0.05;
-
-        controls.minDistance = 100;
-        controls.maxDistance = 500;
-
-        controls.keys = [ 65, 83, 68 ];
         return controls
     }
 
