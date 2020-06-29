@@ -3,10 +3,18 @@
     <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
 <body>
 <script type=module>
-    import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
+    import * as THREE from 'https://threejs.org/build/three.module.js';
+    // import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
+    import { TrackballControls } from 'https://threejs.org/examples/jsm/controls/TrackballControls.js';
+
+    console.log(TrackballControls)
+
     window.THREE = THREE
     window.module ={}
     console.log(THREE)
+
+    let starThreeObjects = undefined
+    let planetThreeObjects = undefined
 
     setTimeout(main, 1);
     async function main(){
@@ -20,24 +28,52 @@
         document.body.appendChild( renderer.domElement );
         const stars = await loadStars()
         console.log('stars', stars)
-        // 36.25981 102.57058
+        // 36.25981 102.57058 2020-6-21 00:53 // eclipse
         const LON = 102.57058
         const LAT = 35.25981
         const DATE = new Date("2020-6-21 00:53")
-        await addStars(scene, stars, LON, LAT, DATE)
-        await addPlanets(scene, LON, LAT, DATE)
+        starThreeObjects = await addStars(scene, starThreeObjects, stars, LON, LAT, DATE)
+        planetThreeObjects = await addPlanets(scene, planetThreeObjects, LON, LAT, DATE)
         makeRings(scene)
         console.log('Done adding stars and planets')
         renderer.render( scene, camera );
         //
-        let [x,y,z] = raDec2XYZ(431, 23)
+        let [x,y,z] = raDec2XYZ(90, 0)
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
         renderer.render( scene, camera );
-
-
+       
+        let elapsed = 0
+        const controls = createControls(camera, renderer.domElement)
+        setInterval(async () => {
+            elapsed += 1000 * 60 *60 * 24
+            let date2 = new Date(DATE.getTime() + elapsed )
+            starThreeObjects = await addStars(scene, starThreeObjects, stars, LON, LAT, date2)
+            planetThreeObjects = await addPlanets(scene, planetThreeObjects, LON, LAT, date2)
+        }, 120);
+        
+        render(renderer, scene, camera, controls)
     }
+
+    function render(renderer, scene, camera, controls){
+        requestAnimationFrame(()=>{
+            controls.update()
+            renderer.render( scene, camera )
+            render(renderer, scene, camera, controls)
+        })
+    }
+
+
+    function createControls( camera ) {
+        const controls = new TrackballControls( camera, renderer.domElement );
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+        controls.keys = [ 65, 83, 68 ];
+        return controls
+    }
+
 
     /**
      * Place planets on celestial sphere.
@@ -52,8 +88,8 @@
      * */
     function raDec2XYZ(ra,dec, lon=-106, lat=35,date=new Date(), distance=110000, offsetAlt=0, offsetAz=0){
         var your_location = {
-            "latitude":lat,
-            "longitude":lon,
+            "latitude":lat+offsetAlt,
+            "longitude":lon+offsetAz,
             "altitude":0
         }
 
@@ -68,8 +104,8 @@
         });
         const horizontal = observe_star.azel(date); 
         // console.log(horizontal)
-        const azimuth = (horizontal.azimuth + offsetAz) * (Math.PI/180)
-        const elev = (horizontal.elevation + offsetAlt) * (Math.PI/180)
+        const azimuth = (horizontal.azimuth ) * (Math.PI/180)
+        const elev = (horizontal.elevation) * (Math.PI/180)
         const celR = horizontal.distance
         const y = Math.sin(elev) * celR 
         const x = Math.sin(azimuth) * Math.cos(elev) * celR 
@@ -80,37 +116,43 @@
 
     window.raDec2XYZ = raDec2XYZ
 
-    async function addStars( scene, stars, lon=-106, lat=35, date=new Date(), offsetAlt=0, offsetAz=0){
+    async function addStars( scene, starObjects, stars, lon=-106, lat=35, date=new Date(), offsetAlt=0, offsetAz=0){
         var your_location = {
             "latitude":lat,
             "longitude":lon,
             "altitude":0
         }
-
+        const threeObjects = []
         for(let i=0; i<stars.declination.length; i++){
             const ra = stars.rightAscension[i] * (180/Math.PI)
             const dec = stars.declination[i] * (180/Math.PI)
             const mag = ((8-stars.apparentMagnitude[i])**2)*40
 
-            let [x,y,z] = raDec2XYZ(ra, dec, lon, lat, date, offsetAlt, offsetAz)
+            let [x,y,z] = raDec2XYZ(ra, dec, lon, lat, date, undefined, offsetAlt, offsetAz)
             let colorIndex = Math.floor(((stars.colorIndexBV[i] + 0.27)/3.9)*stars.color.length)
             colorIndex = Math.min(stars.color.length-1, colorIndex)
             const colour = stars.color[colorIndex]
-           
-            const geometry = new THREE.BoxGeometry(mag,mag,mag);
-            const color = `rgb(${Math.floor(255*colour[0])},${Math.floor(255*colour[1])},${Math.floor(255*colour[2])})`
-            const material = new THREE.MeshBasicMaterial( { color:color} );
-            const cube = new THREE.Mesh( geometry, material );
+            let cube = undefined
+            if(starObjects && starObjects[i]){
+                cube = starObjects[i]
+            } else {
+                const geometry = new THREE.BoxGeometry(mag,mag,mag);
+                const color = `rgb(${Math.floor(255*colour[0])},${Math.floor(255*colour[1])},${Math.floor(255*colour[2])})`
+                const material = new THREE.MeshBasicMaterial( { color:color} );
+                cube = new THREE.Mesh( geometry, material );
+            }
             scene.add( cube );
             cube.position.x = x
             cube.position.y = y
             cube.position.z = z
-    
+            threeObjects.push(cube)
         }
+        return threeObjects
     }
 
-    async function addPlanets(scene, lon=-106, lat=35, date=new Date()){
-        console.log('planets',date)
+    async function addPlanets(scene, planetObjects, lon=-106, lat=35, date=new Date()){
+        // console.log('planets',date)
+        let planetThreeObjectsResult = []
         const planets = [
         {name:"Sun", color:0xffff44}
         ,{name:"Mercury", color:0xffff00}
@@ -124,7 +166,8 @@
         ,{name:"Neptune", color:0x00ffff}
         ]
         // const planets = ["Sun", "Moon","Mercury","Venus","Earth"]
-        for (let planZ of planets){
+        for (let i=0; i<planets.length; i++){
+            let planZ = planets[i]
             let celestialSphereRadius = 100000
             let dist = undefined
             let color =  planZ.color
@@ -147,19 +190,27 @@
                 const dec = radec.dec
                 dist = dist || radec.distance
                 let [x,y,z] = raDec2XYZ(ra, dec, lon, lat,date, dist)
-                const geometry = new THREE.SphereGeometry( planetRadius, 32, 32 );
-                const material = new THREE.MeshBasicMaterial( {color} );
-                const sphere = new THREE.Mesh( geometry, material );
+                let sphere=undefined
+                if(planetObjects && planetObjects[i]) {
+                    sphere = planetObjects[i]
+                } else {
+                    const geometry = new THREE.SphereGeometry( planetRadius, 32, 32 );
+                    const material = new THREE.MeshBasicMaterial( {color} );
+                    sphere = new THREE.Mesh( geometry, material ); 
+                }
+               
                 sphere.position.x = x * celestialSphereRadius
                 sphere.position.y = y * celestialSphereRadius
                 sphere.position.z = z * celestialSphereRadius
                 scene.add( sphere );
-                console.log({planet,p:sphere.position, dist, ra, dec})
+                planetThreeObjectsResult.push(sphere)
+                // console.log({planet,p:sphere.position, dist, ra, dec})
             } catch(err){
                 console.error(planZ)
                 console.error(err)
             }
         }
+        return planetThreeObjectsResult
     }
     window.addPlanets = addPlanets
 
