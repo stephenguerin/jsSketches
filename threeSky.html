@@ -42,7 +42,6 @@
         // let [x,y,z] = raDec2XYZ(0, 89) // polaris
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
-        camera.position.z=-Number.EPSILON //trackball controls need a little bit of offset to work
         renderer.render( scene, camera );
        
         let elapsed = 0
@@ -61,7 +60,7 @@
         requestAnimationFrame(()=>{
             controls.update()
             controls.pan = false
-
+            controls.target = new THREE.Vector3(1,0,0)
             renderer.render( scene, camera )
             render(renderer, scene, camera, controls)
         })
