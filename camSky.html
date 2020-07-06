@@ -1,7 +1,7 @@
 <html>
     <script src="https://cdn.jsdelivr.net/gh/lizard-isana/orb.js@2.3/build/orb.v2.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
-    <script src='./node_modules/tesseract.js/dist/tesseract.min.js'></script>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@1.24.1/build/global/luxon.min.js"></script>
 <body>
 <script type=module>
@@ -73,7 +73,7 @@
         let camJson = await loadCameraJson('alertWildFireCameras.json')
         // start worker
         if(!tessWorker) {
-            tessWorker = Tesseract.createWorker({IS_BROWSER:true, corePath: './node_modules/tesseract.js-core/tesseract-core.asm.js',
+            tessWorker = Tesseract.createWorker({IS_BROWSER:true,
                 logger: function(m){console.info(m)}})
             await tessWorker.load()
             await tessWorker.loadLanguage('eng')
