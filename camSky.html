@@ -63,7 +63,9 @@
         //
         document.getElementById('parametersForm').addEventListener('change',(ev)=>{
             console.log('change form',ev)
-            GUIParameters.dirtyBit = true
+            if (ev.target.id.search('otation') < 0){
+                GUIParameters.dirtyBit = true
+            }
         })
     }
 
@@ -137,7 +139,12 @@
     function render(renderer, scene, camera, controls, starThreeObjects, stars, planetThreeObjects){
         requestAnimationFrame(async ()=>{
             if(controls){controls.update()}
-           
+            
+            camera.fov = Math.atan2(35, GUIParameters.z) * 180/Math.PI // FOV is in degrees. 35 mm maybe ???
+            camera.updateProjectionMatrix()
+            camera.rotation.x = GUIParameters.y * Math.PI/180 // i think x and y are different than AXIS cams
+            camera.rotation.y = GUIParameters.x * Math.PI/180
+            // camera.rotation.z = GUIParameters.z * Math.PI/180
             if(GUIParameters.dirtyBit){
                 const lon = GUIParameters.lon
                 const lat = GUIParameters.lat
@@ -230,21 +237,18 @@
             return Number(document.getElementById('xRotation').value)
         },
         set x(val) {
-            this.dirtyBit = true
             document.getElementById('xRotation').value = Number(val)
         },
         get y() {
             return Number(document.getElementById('yRotation').value)
         },
         set y(val) {
-            this.dirtyBit = true
             document.getElementById('yRotation').value = Number(val)
         },
         get z() {
             return Number(document.getElementById('zRotation').value)
         },
         set z(val) {
-            this.dirtyBit = true
             document.getElementById('zRotation').value = Number(val)
         },
         get date() {
