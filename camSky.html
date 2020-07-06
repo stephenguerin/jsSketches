@@ -1,0 +1,314 @@
+<html>
+    <script src="https://cdn.jsdelivr.net/gh/lizard-isana/orb.js@2.3/build/orb.v2.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
+    <script src='./node_modules/tesseract.js/dist/tesseract.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@1.24.1/build/global/luxon.min.js"></script>
+<body>
+<script type=module>
+    import * as THREE from 'https://threejs.org/build/three.module.js';
+    // import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r99/three.module.js'
+    import {raDec2XYZ,addStars,addPlanets,loadStars,makeRings} from './starUtils.js'
+    import {compareTwoStrings} from './string-similarity.js'
+    import {tzlookup} from './tz.js'
+
+    window.THREE = THREE
+    console.log(THREE)
+    let tessWorker
+
+    let starThreeObjects = undefined
+    let planetThreeObjects = undefined
+
+
+    setTimeout(main, 1);
+    async function main(){
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera( 95, window.innerWidth / window.innerHeight, 0.1, 300000 );
+        window.camera = camera
+        var renderer = new THREE.WebGLRenderer()
+        window.renderer=renderer
+        window.scene = scene
+        renderer.setSize( 600,600 )
+        const overlay = document.getElementById('imgOverlay')
+        overlay.appendChild(renderer.domElement)
+        const stars = await loadStars()
+        console.log('stars', stars)
+        // 36.25981 102.57058 2020-6-21 00:53 // eclipse
+        const LON = 102.57058
+        const LAT = 35.25981
+        const DATE = new Date("2020-6-21 00:53")
+        starThreeObjects = await addStars(scene, starThreeObjects, stars, LON, LAT, DATE)
+        planetThreeObjects = await addPlanets(scene, planetThreeObjects, LON, LAT, DATE)
+        makeRings(scene)
+        console.log('Done adding stars and planets')
+        renderer.render( scene, camera );
+        //
+        let [x,y,z] = raDec2XYZ(0.1, 89)
+        // let [x,y,z] = raDec2XYZ(0, 89) // polaris
+        let vector = new THREE.Vector3( x,y,z)
+        camera.lookAt(vector)
+        render(renderer, scene, camera, undefined, starThreeObjects, stars, planetThreeObjects)
+
+        // load image
+        let img = await loadSkyImage('images/bigDip12.jpg')
+        let underlay = document.getElementById('imgUnderlay')
+        camera.aspect = img.width/img.height
+        camera.updateProjectionMatrix()
+        renderer.setSize( img.width , img.height )
+        underlay.src = img.src
+        // get OCR parameters
+        let ocrParams = await OCRAlertWildfireImage(img)
+        for(var i in ocrParams) GUIParameters[i] = ocrParams[i]
+        console.log('parameters',GUIParameters)
+        render(renderer, scene, camera)
+        //
+        document.getElementById('parametersForm').addEventListener('change',(ev)=>{
+            console.log('change form',ev)
+            GUIParameters.dirtyBit = true
+        })
+    }
+
+    async function OCRAlertWildfireImage(img) {
+        const result = {}
+        // load camera jsons
+        let camJson = await loadCameraJson('alertWildFireCameras.json')
+        // start worker
+        if(!tessWorker) {
+            tessWorker = Tesseract.createWorker({IS_BROWSER:true, corePath: './node_modules/tesseract.js-core/tesseract-core.asm.js',
+                logger: function(m){console.info(m)}})
+            await tessWorker.load()
+            await tessWorker.loadLanguage('eng')
+            await tessWorker.initialize('eng')
+        }
+        // recognise text
+        const rectangle = { left: 0, top: img.height-36, width: img.width, height: 36 }
+        const ocr = await tessWorker.recognize(img, { rectangle })
+        result.text = ocr.data.text
+        console.log('tesseract OCR:',ocr,ocr.data.text)
+        // find geojson representing camera
+        try{
+            let closestFeature = getMostLikelyIDInJSON(camJson, ocr.data.text)
+            console.log('closest feature', closestFeature)
+            result.lat = parseFloat(closestFeature.geometry.coordinates[1])
+            result.lon = parseFloat(closestFeature.geometry.coordinates[0])
+        } catch(err) {
+            console.warn('unable to get lat lon from ocr',err)
+        }
+        try {
+            const photoDate = getDateFromOCR(ocr.data.text)
+            // timezone 
+            const timezoned = getTimezoneOffsetFromLatLon(result.lat, result.lon, photoDate.getTime())
+            console.log({timezoned})
+            const timezoneOffset = timezoned.offset
+            const local = luxon.DateTime.fromMillis(photoDate.getTime())
+            const creatorTzOffset = local.offset
+            const tzDiff = (creatorTzOffset - timezoneOffset) 
+            result.date = new Date(photoDate.getTime() + tzDiff*60*1000)
+            result.timezoneOffsetM = tzDiff
+            console.log('date', photoDate, timezoneOffset)
+        } catch(err) {
+            console.warn('unable to get date from ocr',err)
+        }
+        // find x y z rotations
+        try{
+            const xr = getNumericValFromOCR(ocr.data.text,'x:')
+            const yr = getNumericValFromOCR(ocr.data.text,'y:')
+            const zr = getNumericValFromOCR(ocr.data.text,'z:')
+            result.x=xr
+            result.y=yr
+            result.z=zr
+        } catch(err) {
+            console.warn('unable to get rotations',err)
+        }
+        return result
+    }
+
+    function loadSkyImage(url) {
+        return new Promise(async (resolve, reject)=>{
+            const img=new Image()
+            img.onload = async ()=>{
+    
+                resolve(img)
+            }
+            img.onerror = reject
+            img.src=url
+        })
+    }
+
+    function render(renderer, scene, camera, controls, starThreeObjects, stars, planetThreeObjects){
+        requestAnimationFrame(async ()=>{
+            if(controls){controls.update()}
+           
+            if(GUIParameters.dirtyBit){
+                const lon = GUIParameters.lon
+                const lat = GUIParameters.lat
+                const date = GUIParameters.date
+                await addStars(scene, starThreeObjects, stars, lon,lat, date)
+                await addPlanets(scene, planetThreeObjects, lon, lat, date)
+                GUIParameters.dirtyBit = false
+            }
+            renderer.render( scene, camera )
+            render(renderer, scene, camera, controls, starThreeObjects, stars)
+        })
+    }
+
+
+    function createControls( camera ) {
+        const controls = new TrackballControls( camera, renderer.domElement )
+        controls.pan = false
+        controls.target = new THREE.Vector3(1,0,0)
+        return controls
+    }
+
+    async function loadCameraJson(url){
+        let response = await fetch(url)
+        let data = await response.json()
+        console.log('wf cams', data)
+        return data
+    }
+
+    function getMostLikelyIDInJSON(geojson, OCRtext) {
+        let sorted = geojson.features.sort((a,b)=>{
+            let goal = OCRtext.split(' ')[0].toLowerCase()
+            let sa = compareTwoStrings(goal,a.properties.id.toLowerCase())
+            let sb = compareTwoStrings(goal,b.properties.id.toLowerCase())
+            // console.log(a.properties.id, b.properties.id,sa,sb)
+            return sb-sa  
+        })
+        return sorted[0]
+    }
+
+    // assuming time is right after the date string. fingers crossed
+    function getDateFromOCR(ocrText) {
+        const x = ocrText.split(' ')
+        let i =0;
+        for(i=0;i<x.length; i++) {
+            if (!isNaN(new Date(x[i]))) {
+                break;
+            }
+        }
+        const ds = `${x[i]} ${x[i+1]}`
+        const result = new Date(ds)
+        return result
+    }
+
+    function getTimezoneOffsetFromLatLon(lat, lon, startUTC){
+        let tzone = tzlookup(lat,lon)
+        let local = luxon.DateTime.fromMillis(startUTC)
+        let rezoned = local.setZone(tzone);
+        return rezoned
+    }
+
+    function getNumericValFromOCR(ocrText, delimiter='x:'){
+        const x = ocrText.toLowerCase().split(' ')
+        const x1 = x.filter((a)=>{
+            return a.search(delimiter) >= 0
+        })
+        if(x1.length == 0) return 0
+        const x2 = x1[0]
+        const x3 = parseFloat(x2.slice(delimiter.length))
+        return x3
+    }
+
+    // GUI
+    //
+    var GUIParameters = {
+        get lat() {
+            return Number(document.getElementById('latitude').value)
+        },
+        set lat(val) {
+            this.dirtyBit = true
+            document.getElementById('latitude').value = Number(val)
+        },
+        get lon() {
+            return Number(document.getElementById('longitude').value)
+        },
+        set lon(val) {
+            this.dirtyBit = true
+            document.getElementById('longitude').value = Number(val)
+        },
+        get x() {
+            return Number(document.getElementById('xRotation').value)
+        },
+        set x(val) {
+            this.dirtyBit = true
+            document.getElementById('xRotation').value = Number(val)
+        },
+        get y() {
+            return Number(document.getElementById('yRotation').value)
+        },
+        set y(val) {
+            this.dirtyBit = true
+            document.getElementById('yRotation').value = Number(val)
+        },
+        get z() {
+            return Number(document.getElementById('zRotation').value)
+        },
+        set z(val) {
+            this.dirtyBit = true
+            document.getElementById('zRotation').value = Number(val)
+        },
+        get date() {
+            const d = new Date(document.getElementById('imgDate').value)
+            console.log('get date',document.getElementById('imgDate').value, d)
+            return d
+        },
+        set date(val) {
+            this.dirtyBit = true
+            document.getElementById('imgDate').value = (new Date(val)).toISOString().slice(0,16)
+            console.log('set date to', document.getElementById('imgDate').value)
+        },
+        dirtyBit : true,
+        timezoneOffsetM:0,
+    }
+
+
+
+</script>
+<style>
+    #viewDiv {
+        position: relative;
+    }
+    #imgOverlay{
+        position: absolute;
+        top: 0px;
+        left:0px;
+        mix-blend-mode: exclusion;
+        filter: brightness(89%) sepia() saturate(998%) hue-rotate(14deg);
+        opacity: 0.9;
+        /* filter: hue-rotate(58deg); */
+    }
+    #parameters {
+        position: sticky;
+        position: -webkit-sticky;
+        opacity: 85%;
+        bottom:1px;
+        background-color: white;
+    }
+</style>
+<div>
+    <div id=viewDiv>
+        <img id=imgUnderlay>
+        <div id=imgOverlay ></div>
+    </div>
+    <div id="parameters">
+        <form id='parametersForm'>
+            Parameters:
+            <label for="latitude">Lat:</label>
+            <input type="number" id="latitude" name="latitude" min="-90" max="90">
+            <label for="longitude">Lon:</label>
+            <input type="number" id="longitude" name="longitude" min="-180" max="180">
+            Rotation:
+            <label for="xRotation">X:</label>
+            <input type="number" id="xRotation" name="xRotation" min="-180" max="180">
+            <label for="yRotation">Y:</label>
+            <input type="number" id="yRotation" name="yRotation" min="-180" max="180">
+            <label for="zRotation">Z:</label>
+            <input type="number" id="zRotation" name="zRotation" min="-180" max="180">
+            <label for="imgDate">date time (GMT):</label>
+            <input type="datetime-local" id="imgDate" name="imgDate" >
+        </form>
+    </div>
+</div>
+</body>
+
+</html>
