@@ -1,8 +1,8 @@
 <html>
     <script src="https://cdn.jsdelivr.net/gh/lizard-isana/orb.js@2.3/build/orb.v2.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jstat@latest/dist/jstat.min.js"></script>
-    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@1.24.1/build/global/luxon.min.js"></script>
+    <!-- <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/luxon@1.24.1/build/global/luxon.min.js"></script> -->
 <body>
 <script type=module>
     import * as THREE from 'https://threejs.org/build/three.module.js';
@@ -11,9 +11,9 @@
     import {compareTwoStrings} from './string-similarity.js'
     import {timezoneLookup} from './node_modules/redfish-core/lib/utils/timezoneLookup.js'
     import {OCRAlertWildfireImage} from './node_modules/redfish-core/lib/alertWildfire/ocr.js'
+    // import * as tess from './node_modules/tesseract.js/dist/tesseract.min.js'
 
     window.THREE = THREE
-    console.log(THREE)
     let tessWorker
 
     let starThreeObjects = undefined
