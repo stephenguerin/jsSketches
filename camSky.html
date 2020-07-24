@@ -43,9 +43,12 @@
         let vector = new THREE.Vector3( x,y,z)
         camera.lookAt(vector)
         render(renderer, scene, camera, undefined, starThreeObjects, stars, planetThreeObjects)
-
-        // load image
         let img = await loadSkyImage('images/bigDip12.jpg')
+        OCRParseImage(img)
+    }
+
+    async function OCRParseImage(img){
+        // load image
         let underlay = document.getElementById('imgUnderlay')
         camera.aspect = img.width/img.height
         camera.updateProjectionMatrix()
@@ -59,13 +62,6 @@
         for(var i in ocrParams) GUIParameters[i] = ocrParams[i]
         console.log('parameters',GUIParameters)
         render(renderer, scene, camera)
-        //
-        document.getElementById('parametersForm').addEventListener('change',(ev)=>{
-            console.log('change form',ev)
-            if (ev.target.id.search('otation') < 0){
-                GUIParameters.dirtyBit = true
-            }
-        })
     }
 
     function loadSkyImage(url) {
@@ -93,12 +89,12 @@
                 const lon = GUIParameters.lon
                 const lat = GUIParameters.lat
                 const date = GUIParameters.date
-                await addStars(scene, starThreeObjects, stars, lon,lat, date)
-                await addPlanets(scene, planetThreeObjects, lon, lat, date)
+                starThreeObjects = await addStars(scene, starThreeObjects, stars, lon,lat, date)
+                planetThreeObjects = await addPlanets(scene, planetThreeObjects, lon, lat, date)
                 GUIParameters.dirtyBit = false
             }
             renderer.render( scene, camera )
-            render(renderer, scene, camera, controls, starThreeObjects, stars)
+            render(renderer, scene, camera, controls, starThreeObjects, stars, planetThreeObjects)
         })
     }
 
@@ -161,7 +157,25 @@
         timezoneOffsetM:0,
     }
 
+    document.getElementById('parametersForm').addEventListener('change',(ev)=>{
+            console.log('change form',ev)
+            if (ev.target.id.search('otation') < 0){
+                GUIParameters.dirtyBit = true
+            }
+        })
 
+    window.imageChanged = function(ev){
+        console.log(ev.target.files)
+        const file = ev.target.files[0]
+        const reader = new FileReader();
+        reader.onload = function(aImg) { 
+            let myUnderlay = document.getElementById('imgUnderlay')
+            myUnderlay.src=aImg.target.result
+            OCRParseImage(myUnderlay)
+        //  return function(e) { aImg.src = e.target.result; };
+        }
+        reader.readAsDataURL(file);
+    }
 
 </script>
 <style>
@@ -195,6 +209,9 @@
             <h3 id='message'>
                 
             </h3>
+        </div>
+        <div>
+            <input type="file" name="myImage" accept="image/*" onchange="imageChanged(event)"/>
         </div>
         <form id='parametersForm'>
             Parameters:
